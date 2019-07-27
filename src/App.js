@@ -3,7 +3,7 @@ import React from 'react';
 import { Switch, Route, Router } from "react-router-dom";
 import { createBrowserHistory } from "history";
 
-import { Button } from 'antd';
+import { Button } from '../src/components/Button';
 
 let history = createBrowserHistory();
 
@@ -15,7 +15,9 @@ export default () => {
           exact
           path={"/"}
           render={() => 
-            <Button>Test</Button>
+            <Button
+              content="Test"
+            />
           }
         />
       </Switch>
