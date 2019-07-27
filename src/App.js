@@ -3,6 +3,8 @@ import React from 'react';
 import { Switch, Route, Router } from "react-router-dom";
 import { createBrowserHistory } from "history";
 
+import { Button } from 'antd';
+
 let history = createBrowserHistory();
 
 export default () => {
@@ -12,9 +14,9 @@ export default () => {
         <Route 
           exact
           path={"/"}
-          render={() => {
-            return null;
-          }}
+          render={() => 
+            <Button>Test</Button>
+          }
         />
       </Switch>
     </Router>
