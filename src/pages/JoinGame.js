@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 
+import { emit, events } from '../reducers/sockets'
+import useRedirect from '../hooks/useRedirect';
+
 import { Input } from  'antd'
 import { Button } from '../components/Button'
 
@@ -36,7 +39,7 @@ const styles = {
 
 export default (props) => {
     const [name, setName] = useState('')
-    const [gameCode, setGameCode] = useState()
+    const [gameCode, setGameCode] = useState('')
     return (
         <div
             style={styles.mainContainer}
@@ -58,6 +61,7 @@ export default (props) => {
                 <Input 
                     style={styles.input}
                     placeholder="Gamecode"
+                    value={gameCode}
                     onChange={({target: { value }}) => {
                         setGameCode(value)
                     }}
@@ -66,6 +70,10 @@ export default (props) => {
             <Button 
                 content="Join Game"
                 style={styles.button}
+                onClick={() => {
+                    emit(events.joinGame, { name, gameCode })
+                    useRedirect('waiting-room')
+                }}
             />
         </div>
     )

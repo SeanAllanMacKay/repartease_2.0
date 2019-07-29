@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 
+import { emit, events } from '../reducers/sockets'
+
 import { Input } from  'antd'
 import { Button } from '../components/Button'
+import useRedirect from '../hooks/useRedirect';
 
 const styles = {
     mainContainer: {
@@ -51,6 +54,10 @@ export default (props) => {
             <Button 
                 content="Start Game"
                 style={styles.button}
+                onClick={() => {
+                    emit(events.startGame, { name })
+                    useRedirect('waiting-room')
+                }}
             />
         </div>
     )

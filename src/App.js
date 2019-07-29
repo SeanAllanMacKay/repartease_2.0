@@ -1,12 +1,18 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
-import { history } from  './hooks/useRedirect'
+import useRedirect, { history } from  './hooks/useRedirect'
 import { Switch, Route, Router } from "react-router-dom";
+import Cookies from 'universal-cookie'
+import { socket, emit, events } from './reducers/sockets'
+import { GameProvider } from './context/GameContext'
 
 import { Header } from '../src/components/Header'
 import LandingPage from '../src/pages/LandingPage'
 import StartGame from '../src/pages/StartGame'
 import JoinGame from '../src/pages/JoinGame'
+import WaitingRoom from '../src/pages/WaitingRoom'
+
+const cookies = new Cookies()
 
 const styles = {
   container: {
@@ -16,9 +22,29 @@ const styles = {
 }
 
 export default () => {
+  const [game, setGame] = useState(null);
+  useEffect(() => {
+    if(game){
+      useRedirect('waiting-room')
+    }
+
+    if(game === null && cookies.get('game')){
+      emit(events.joinGame, cookies.get('game'))
+    }
+
+    socket
+      .on('update-cookie', newCookie => {
+        cookies.set('game', JSON.stringify(newCookie), { path: '/' })
+      })
+      .on('update-game', newGame => {
+        setGame(newGame)
+      })
+  })
   return (
-    <>
-    <Header />
+    <GameProvider
+      value={game}
+    >
+      <Header />
       <Router 
         history={history}
       >
@@ -45,9 +71,15 @@ export default () => {
                 <JoinGame />
               }
             />
+            <Route 
+              path={"/waiting-room"}
+              render={() => 
+                <WaitingRoom />
+              }
+            />
           </Switch>
         </div>
       </Router>
-    </>
+    </GameProvider>
   );
 };
