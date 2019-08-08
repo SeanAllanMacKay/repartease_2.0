@@ -55,7 +55,7 @@ export default (props) => {
                     placeholder="Name"
                     value={name}
                     onChange={({target: { value }}) => {
-                        setName(value)
+                        setName(value.toUpperCase())
                     }}
                 />
                 <Input 
@@ -63,13 +63,14 @@ export default (props) => {
                     placeholder="Gamecode"
                     value={gameCode}
                     onChange={({target: { value }}) => {
-                        setGameCode(value)
+                        setGameCode(value.toUpperCase())
                     }}
                 />
             </div>
             <Button 
                 content="Join Game"
                 style={styles.button}
+                type="primary"
                 onClick={() => {
                     emit(events.joinGame, { name, gameCode })
                     useRedirect('waiting-room')

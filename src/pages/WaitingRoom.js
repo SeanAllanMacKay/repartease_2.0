@@ -1,7 +1,10 @@
 import React, { useContext } from 'react';
 import GameContext from '../context/GameContext'
 
+import { emit, events } from '../reducers/sockets'
+
 import { Button } from '../components/Button'
+import LeaveGame from '../components/LeaveGame'
 
 const styles = {
     mainContainer: {
@@ -80,16 +83,21 @@ export default (props) => {
                         })}
                     </div>
                     {
-                        game.players.length > 1 
+                        game && game.players.length > 1 
                         &&
-                        
+                        props.activePlayer
+                        &&
                         <Button 
-                            content="Start Game"
+                            content="Start Playing"
                             type="primary"
                             style={styles.startButton}
+                            onClick={() => {
+                                emit('all-in', { gameCode: game.gameCode })
+                            }}
                         />
                     }
-                </div> 
+                    <LeaveGame />
+                </div>
                 :
                 <h2
                     style={styles.title}

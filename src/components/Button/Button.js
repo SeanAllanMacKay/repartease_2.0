@@ -9,7 +9,14 @@ const styles = {
 }
 
 export default (props) => {
-    const { content, disabled, type, tooltip, onClick, style } = props;
+    const { 
+        content, 
+        disabled, 
+        type, 
+        tooltip, 
+        onClick, 
+        style 
+    } = props;
     return (
         <Tooltip
             title={tooltip}

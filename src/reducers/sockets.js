@@ -5,7 +5,9 @@ export const socket = io('/game')
 export const events = {
     startGame: 'start-game',
     joinGame: 'join-game',
-    reJoinGame: 'rejoin-game'
+    leaveGame: 'disconnect',
+    allIn: 'all-in',
+    submitResponse: 'submit-response'
 }
 
 export const emit = (event, data) => {
@@ -16,8 +18,14 @@ export const emit = (event, data) => {
         case events.joinGame:
             socket.emit(events.joinGame, data)
             break;
-        case events.reJoinGame:
-            socket.emit(events.reJoinGame, data)
+        case events.allIn:
+            socket.emit(events.allIn, data)
+            break;
+        case events.submitResponse:
+            socket.emit(events.submitResponse, data)
+            break;
+        case events.leaveGame:
+            socket.emit(events.leaveGame)
             break;
         default:
             break;

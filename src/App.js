@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 import useRedirect, { history } from  './hooks/useRedirect'
 import { Switch, Route, Router } from "react-router-dom";
-import Cookies from 'universal-cookie'
+import cookie, { set } from './hooks/useCookie'
 import { socket, emit, events } from './reducers/sockets'
 import { GameProvider } from './context/GameContext'
 
@@ -11,8 +11,7 @@ import LandingPage from '../src/pages/LandingPage'
 import StartGame from '../src/pages/StartGame'
 import JoinGame from '../src/pages/JoinGame'
 import WaitingRoom from '../src/pages/WaitingRoom'
-
-const cookies = new Cookies()
+import Game from './pages/Game'
 
 const styles = {
   container: {
@@ -23,23 +22,30 @@ const styles = {
 
 export default () => {
   const [game, setGame] = useState(null);
+  const [activePlayer, setActivePlayer] = useState(false)
   useEffect(() => {
     if(game){
-      useRedirect('waiting-room')
+      game.active ?
+        useRedirect('game') : 
+        useRedirect('waiting-room')
     }
 
-    if(game === null && cookies.get('game')){
-      emit(events.joinGame, cookies.get('game'))
+    if(game === null && cookie){
+      emit(events.joinGame, cookie)
     }
 
     socket
       .on('update-cookie', newCookie => {
-        cookies.set('game', JSON.stringify(newCookie), { path: '/' })
+        set(newCookie)
       })
       .on('update-game', newGame => {
         setGame(newGame)
+        if(game && (newGame.active !== game.active)) useRedirect('game')
       })
-  })
+      .on('set-active-player', value => {
+        setActivePlayer(value)
+      })
+  }, [game, activePlayer])
   return (
     <GameProvider
       value={game}
@@ -74,7 +80,17 @@ export default () => {
             <Route 
               path={"/waiting-room"}
               render={() => 
-                <WaitingRoom />
+                <WaitingRoom 
+                  activePlayer={activePlayer}
+                />
+              }
+            />
+            <Route 
+              path={"/game"}
+              render={() => 
+                <Game 
+                  activePlayer={activePlayer}
+                />
               }
             />
           </Switch>

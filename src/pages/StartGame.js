@@ -48,12 +48,13 @@ export default (props) => {
                 placeholder="Name"
                 value={name}
                 onChange={({target: { value }}) => {
-                    setName(value)
+                    setName(value.toUpperCase())
                 }}
             />
             <Button 
                 content="Start Game"
                 style={styles.button}
+                type="primary"
                 onClick={() => {
                     emit(events.startGame, { name })
                     useRedirect('waiting-room')

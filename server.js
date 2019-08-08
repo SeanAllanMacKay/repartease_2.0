@@ -21,6 +21,8 @@ const {
   PORT = 8080,
 } = process.env
 
+console.log(`mongodb://${db_user}:${db_password}@${db_url}/${db_schema}`)
+
 mongoose.connect(`mongodb://${db_user}:${db_password}@${db_url}/${db_schema}`)
 
 const db = mongoose.connection
@@ -58,17 +60,26 @@ let gameSchema = new Schema({
     }
   ],
 	sockets: [String],
-	turn: Number
+  turn: Number,
+  active: Boolean,
+  used: [String],
+  prompt: String,
+  responses: [
+    {
+      playerId: Number, 
+      response: String
+    }
+  ]
 }, {collection: 'games'})
 
-var promptSchema = new Schema({
+let promptSchema = new Schema({
 	expansion: String,
 	prompt: String
 }, {collection: 'prompts'})
 
-var Game = mongoose.model('Game', gameSchema)
+let Game = mongoose.model('Game', gameSchema)
 
-var Prompts = mongoose.model('Prompts', promptSchema)
+let Prompts = mongoose.model('Prompts', promptSchema)
 
 game
 .on('connection', socket => {
@@ -95,13 +106,28 @@ game
         players: [{...player, socket: socket.id}],
         sockets: [socket.id],
         turn: 0,
+        active: false,
+        used: [],
+        prompt: '',
+        responses: []
       }
 
-      let newGame =  new Game(game)
-      newGame.save()
+      Prompts.find({ 'expansion': 'standard' }, (err, prompts) => {
+        if (err) {
+          console.log(err)
+        }
+        else{
+          const newPrompt = prompts[Math.floor(Math.random() * prompts.length)]
+          game.used.push(newPrompt._id)
+          game.prompt = newPrompt.prompt
+          let newGame =  new Game(game)
+          newGame.save()
 
-      io.of('game').to(gameCode).emit('update-game', game)
-      socket.emit('update-cookie', { gameCode, ...player })
+          io.of('game').to(gameCode).emit('update-game', game)
+          socket.emit('set-active-player', true)
+          socket.emit('update-cookie', { gameCode, ...player })
+        }
+      })
     })
     .on('join-game', ({ name, gameCode, playerId, points }) => {
       Game.findOne({ 'gameCode': gameCode }, (error, doc) => {
@@ -121,7 +147,7 @@ game
           }
           
           player = { 
-            playerId: playerId === undefined ? Math.max.apply(Math, doc.players.map((player) => { return player.playerId; })) + 1 : playerId,
+            playerId: playerId === undefined ? Math.max.apply(Math, doc.players.map((player) => { return player.playerId; })) + 1 || 0 : playerId,
             name,
             points: points || 0,
           }
@@ -132,9 +158,84 @@ game
 
           io.of('game').to(gameCode).emit('update-game', doc)
           socket.emit('update-cookie', { gameCode, ...player })
+          if(doc.players.length === 1) socket.emit('set-active-player', true)
         }
         else {
           socket.emit('game-not-found')
+        }
+      })
+    })
+    .on('all-in', ({ gameCode }) => {
+      Game.findOne({ 'gameCode': gameCode }, (error, doc) => {
+        if(error){
+          console.log(error)
+        }
+        else{
+          doc.active = true;
+          doc.save()
+          io.of('game').to(gameCode).emit('update-game', doc)
+        }
+      })
+    })
+    .on('submit-response', ({ gameCode, response }) => {
+      Game.findOne({ 'gameCode': gameCode }, (error, doc) => {
+        if(error){
+          console.log(error)
+        }
+        else{
+          let player = doc.players.filter(player => {
+            return player.socket === socket.id
+          })[0]
+
+          const newResponse = {
+            response,
+            playerId: player.playerId
+          }
+
+          doc.responses.push(newResponse)
+          doc.save()
+
+          io.of('game').to(gameCode).emit('update-game', doc)
+        }
+      })
+    })
+    .on('change-turn', ({ gameCode }) => {
+      Game.findOne({ 'gameCode': gameCode }, (error, doc) => {
+        if(error){
+          console.log(error)
+        }
+        else{
+          doc.turn = doc.players[doc.turn + 1].playerId
+        }
+      })
+    })
+    .on('new-prompt', ({ gameCode }) => {
+      Game.findOne({ 'gameCode': gameCode }, (error, doc) => {
+        if(error){
+          console.log(error)
+        }
+        else{
+          Prompts.find({ 'expansion': 'standard' }, (err, prompts) => {
+						if (err) {
+							console.log(err)
+						}
+						else{
+              doc.used.map(used => {
+                let find = prompts.filter(prompt => {
+                  return prompt._id === used
+                })[0]
+                prompts.splice(prompts.indexOf(find), 1)
+              })
+
+              const newPrompt = prompts[Math.floor(Math.random() * prompts.length)]
+              doc.used.push(newPrompt._id)
+              if(doc.used.length >= prompts.length) doc.used = []
+              doc.prompt = newPrompt
+              doc.save()
+
+              io.of('game').to(gameCode).emit('update-game', doc)
+						}
+					})
         }
       })
     })
@@ -144,18 +245,14 @@ game
           console.log(error)
         }
         else if(doc){
+          socket.leave(doc.gameCode)
           doc.sockets.splice(doc.sockets.indexOf(socket.id), 1)
-
+          
           let player = doc.players.filter(player => {
             return player.socket === socket.id
           })[0]
 
-          if(doc.turn === player.playerId){
-            doc.turn = doc.players[player.playerId + 1]
-          }
-
           doc.players.splice(doc.players.indexOf(player), 1)
-
           doc.save()
 
           io.of('game').to(doc.gameCode).emit('update-game', doc)
