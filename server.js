@@ -55,7 +55,7 @@ let gameSchema = new Schema({
     {
       playerId: Number,
       name: String,
-      points: String,
+      points: Number,
       socket: String,
     }
   ],
@@ -117,148 +117,245 @@ game
           console.log(err)
         }
         else{
-          const newPrompt = prompts[Math.floor(Math.random() * prompts.length)]
-          game.used.push(newPrompt._id)
-          game.prompt = newPrompt.prompt
-          let newGame =  new Game(game)
-          newGame.save()
+          try{
+            const newPrompt = prompts[Math.floor(Math.random() * prompts.length)]
+            game.used.push(newPrompt._id)
+            game.prompt = newPrompt.prompt
+            let newGame =  new Game(game)
+            newGame.save()
 
-          io.of('game').to(gameCode).emit('update-game', game)
-          socket.emit('set-active-player', true)
-          socket.emit('update-cookie', { gameCode, ...player })
+            io.of('game').to(gameCode).emit('update-game', game)
+            socket.emit('set-active-player', true)
+            socket.emit('update-cookie', { gameCode, ...player })
+          } catch (error){
+            console.log(error)
+          }
         }
       })
     })
+
     .on('join-game', ({ name, gameCode, playerId, points }) => {
       Game.findOne({ 'gameCode': gameCode }, (error, doc) => {
         if(error){
           console.log(error)
         }
         else if(doc){
-          socket.join(gameCode)
+          try{
+            socket.join(gameCode)
 
-          let player = doc.players.filter(player => {
-            return player.playerId === playerId
-          })[0]
+            let player = doc.players.filter(player => {
+              return player.playerId === playerId
+            })[0]
 
-          if(player){
-            doc.sockets.splice(doc.sockets.indexOf(player.socket), 1)
-            doc.players.splice(doc.players.indexOf(player), 1)
+            if(player){
+              doc.sockets.splice(doc.sockets.indexOf(player.socket), 1)
+              doc.players.splice(doc.players.indexOf(player), 1)
+            }
+            
+            player = { 
+              playerId: playerId === undefined ? Math.max.apply(Math, doc.players.map((player) => { return player.playerId; })) + 1 || 0 : playerId,
+              name,
+              points: points || 0,
+            }
+
+            doc.players = [ ...doc.players, { ...player, socket: socket.id } ]
+            doc.sockets = [ ...doc.sockets, socket.id ]
+            doc.save()
+
+            io.of('game').to(gameCode).emit('update-game', doc)
+            socket.emit('update-cookie', { gameCode, ...player })
+            if(doc.players.length === 1) socket.emit('set-active-player', true)
+
+          }catch (error){
+            console.log(error)
           }
-          
-          player = { 
-            playerId: playerId === undefined ? Math.max.apply(Math, doc.players.map((player) => { return player.playerId; })) + 1 || 0 : playerId,
-            name,
-            points: points || 0,
-          }
-
-          doc.players = [ ...doc.players, { ...player, socket: socket.id } ]
-          doc.sockets = [ ...doc.sockets, socket.id ]
-          doc.save()
-
-          io.of('game').to(gameCode).emit('update-game', doc)
-          socket.emit('update-cookie', { gameCode, ...player })
-          if(doc.players.length === 1) socket.emit('set-active-player', true)
         }
         else {
-          socket.emit('game-not-found')
+          try{
+            socket.emit('game-not-found')
+          }catch (error){
+            console.log(error)
+          }
         }
       })
     })
+
     .on('all-in', ({ gameCode }) => {
       Game.findOne({ 'gameCode': gameCode }, (error, doc) => {
         if(error){
           console.log(error)
         }
         else{
-          doc.active = true;
-          doc.save()
-          io.of('game').to(gameCode).emit('update-game', doc)
+          try{
+            doc.active = true;
+            doc.save()
+            io.of('game').to(gameCode).emit('update-game', doc)
+          }catch (error){
+            console.log(error)
+          }
         }
       })
     })
+
     .on('submit-response', ({ gameCode, response }) => {
       Game.findOne({ 'gameCode': gameCode }, (error, doc) => {
         if(error){
           console.log(error)
         }
         else{
-          let player = doc.players.filter(player => {
-            return player.socket === socket.id
-          })[0]
-
-          const newResponse = {
-            response,
-            playerId: player.playerId
+          try{
+            let player = doc.players.filter(player => {
+              return player.socket === socket.id
+            })[0]
+  
+            const newResponse = {
+              response,
+              playerId: player.playerId
+            }
+  
+            doc.responses.push(newResponse)
+            doc.save()
+  
+            io.of('game').to(gameCode).emit('update-game', doc)
+          }catch (error){
+            console.log(error)
           }
-
-          doc.responses.push(newResponse)
-          doc.save()
-
-          io.of('game').to(gameCode).emit('update-game', doc)
         }
       })
     })
+
+    .on('pick-response', ({ gameCode, playerId }) => {
+      Game.findOne({ 'gameCode': gameCode }, async (error, doc) => {
+        if(error){
+          console.log(error)
+        }
+        else{
+          try{
+            const chosenPlayer = doc.players.filter(player => playerId === player.playerId)[0]
+
+            chosenPlayer.points += 1
+
+            doc.turn = doc.players.length - 1 === doc.turn ? doc.players[0].playerId : doc.players[doc.turn + 1].playerId
+
+            doc.responses = []
+
+            await Prompts.find({ 'expansion': 'standard' }, (err, prompts) => {
+              if (err) {
+                console.log(err)
+              }
+              else{
+                doc.used.map(used => {
+                  let find = prompts.filter(prompt => {
+                    return prompt._id === used
+                  })[0]
+                  prompts.splice(prompts.indexOf(find), 1)
+                })
+  
+                const newPrompt = prompts[Math.floor(Math.random() * prompts.length)]
+
+                doc.used.push(newPrompt._id)
+                if(doc.used.length >= prompts.length) doc.used = []
+                doc.prompt = newPrompt.prompt
+              }
+            })
+
+            doc.save()
+
+            io.of('game').to(gameCode).emit('update-game', doc)
+
+            io.of('game').to(gameCode).emit('set-active-player', false)
+
+            socket.broadcast.to(doc.players[doc.turn].socket).emit('set-active-player', true);
+
+          }catch (error){
+            console.log(error)
+          }
+        }
+      })
+    })
+
     .on('change-turn', ({ gameCode }) => {
       Game.findOne({ 'gameCode': gameCode }, (error, doc) => {
         if(error){
           console.log(error)
         }
         else{
-          doc.turn = doc.players[doc.turn + 1].playerId
+          try{
+            doc.turn = doc.players[doc.turn + 1].playerId
+
+            doc.save()
+
+            io.of('game').to(gameCode).emit('update-game', doc)
+          }catch (error){
+            console.log(error)
+          }
         }
       })
     })
+
     .on('new-prompt', ({ gameCode }) => {
       Game.findOne({ 'gameCode': gameCode }, (error, doc) => {
         if(error){
           console.log(error)
         }
         else{
-          Prompts.find({ 'expansion': 'standard' }, (err, prompts) => {
-						if (err) {
-							console.log(err)
-						}
-						else{
-              doc.used.map(used => {
-                let find = prompts.filter(prompt => {
-                  return prompt._id === used
-                })[0]
-                prompts.splice(prompts.indexOf(find), 1)
-              })
-
-              const newPrompt = prompts[Math.floor(Math.random() * prompts.length)]
-              doc.used.push(newPrompt._id)
-              if(doc.used.length >= prompts.length) doc.used = []
-              doc.prompt = newPrompt
-              doc.save()
-
-              io.of('game').to(gameCode).emit('update-game', doc)
-						}
-					})
+          try{
+            Prompts.find({ 'expansion': 'standard' }, (err, prompts) => {
+              if (err) {
+                console.log(err)
+              }
+              else{
+                doc.used.map(used => {
+                  let find = prompts.filter(prompt => {
+                    return prompt._id === used
+                  })[0]
+                  prompts.splice(prompts.indexOf(find), 1)
+                })
+  
+                const newPrompt = prompts[Math.floor(Math.random() * prompts.length)]
+                doc.used.push(newPrompt._id)
+                if(doc.used.length >= prompts.length) doc.used = []
+                doc.prompt = newPrompt
+                doc.save()
+  
+                io.of('game').to(gameCode).emit('update-game', doc)
+              }
+            })
+          }catch (error){
+            console.log(error)
+          }
         }
       })
     })
+
     .on('disconnect', () => {
       Game.findOne({ sockets: socket.id }, (error, doc) => {
         if(error){
           console.log(error)
         }
         else if(doc){
-          socket.leave(doc.gameCode)
-          doc.sockets.splice(doc.sockets.indexOf(socket.id), 1)
-          
-          let player = doc.players.filter(player => {
-            return player.socket === socket.id
-          })[0]
+          try{
+            socket.leave(doc.gameCode)
+            doc.sockets.splice(doc.sockets.indexOf(socket.id), 1)
+            
+            let player = doc.players.filter(player => {
+              return player.socket === socket.id
+            })[0]
 
-          doc.players.splice(doc.players.indexOf(player), 1)
-          doc.save()
+            doc.players.splice(doc.players.indexOf(player), 1)
+            doc.save()
 
-          io.of('game').to(doc.gameCode).emit('update-game', doc)
+            io.of('game').to(doc.gameCode).emit('update-game', doc)
+          }catch (error){
+            console.log(error)
+          }
         }
         else {
-          socket.emit('game-not-found')
+          try{
+            socket.emit('game-not-found')
+          }catch (error){
+            console.log(error)
+          }
         }
       })
     })

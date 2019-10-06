@@ -3,7 +3,6 @@ import GameContext from '../../context/GameContext'
 
 import ActivePlayer from './ActivePlayer'
 import InactivePlayer from './InactivePlayer'
-import LeaveGame from '../../components/LeaveGame'
 import { emit } from '../../reducers/sockets';
 
 const styles = {
@@ -25,6 +24,9 @@ export default (props) => {
                 <ActivePlayer 
                     prompt={game && game.prompt} 
                     responses={game && game.responses}
+                    submitPick={playerId => {
+                        emit('pick-response', { gameCode: game.gameCode, playerId })
+                    }}
                 /> 
                 :
                 <InactivePlayer 

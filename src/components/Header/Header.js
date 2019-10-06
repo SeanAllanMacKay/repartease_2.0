@@ -101,7 +101,12 @@ export default (props) => {
                         borderTop: '1px solid lightgrey'
                     }}
                 >
-                    <LeaveGame/>
+                    <LeaveGame
+                        onClick={() => {
+                            props.removeGame()
+                            setMenuOpen(false)
+                        }}
+                    />
                 </div>
             </Drawer>
         </div>

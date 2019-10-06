@@ -7,7 +7,8 @@ export const events = {
     joinGame: 'join-game',
     leaveGame: 'disconnect',
     allIn: 'all-in',
-    submitResponse: 'submit-response'
+    submitResponse: 'submit-response',
+    pickResponse: 'pick-response'
 }
 
 export const emit = (event, data) => {
@@ -23,6 +24,9 @@ export const emit = (event, data) => {
             break;
         case events.submitResponse:
             socket.emit(events.submitResponse, data)
+            break;
+        case events.pickResponse:
+            socket.emit(events.pickResponse, data)
             break;
         case events.leaveGame:
             socket.emit(events.leaveGame)

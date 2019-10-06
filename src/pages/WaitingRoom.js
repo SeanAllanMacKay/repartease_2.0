@@ -96,7 +96,9 @@ export default (props) => {
                             }}
                         />
                     }
-                    <LeaveGame />
+                    <LeaveGame 
+                        onClick={() => props.removeGame()}
+                    />
                 </div>
                 :
                 <h2

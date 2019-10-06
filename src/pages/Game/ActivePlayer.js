@@ -22,13 +22,20 @@ const styles = {
     },
     responses: {
         marginBottom: '30px',
-        maxHeight: '70vh'
+        maxHeight: '70vh',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center'
     },
     response: {
         display: 'flex',
         justifyContent: 'center',
         fontSize: '1.25em',
-        padding: '10px'
+        padding: '10px',
+        cursor: 'pointer',
+        border: `3px solid ${style.color.primary}`,
+        margin: '20px 0'
     },
     chosen: {
         backgroundColor: style.color.primary,
@@ -45,9 +52,9 @@ export default (props) => {
                 {props.responses.map((response, index) => {
                     return (
                         <div
-                            style={index === chosen ? {...styles.response, ...styles.chosen} : styles.response}
+                            style={response === chosen ? {...styles.response, ...styles.chosen} : styles.response}
                             onClick={() => {
-                                index === chosen ? setChosen(null) : setChosen(index)
+                                index === chosen ? setChosen(null) : setChosen(response)
                             }}
                         >
                             {response.response}
@@ -60,7 +67,10 @@ export default (props) => {
                 type="primary"
                 style={styles.button}
                 tooltip={!props.responses.length > 0 ? 'Wait for the other players to submit their answers' : null}
-                disabled={!props.responses.length > 0}
+                disabled={!props.responses.length || !chosen}
+                onClick={() => {
+                    props.submitPick(chosen.playerId)
+                }}
             />
         </div>
     )

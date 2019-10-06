@@ -39,6 +39,7 @@ export default () => {
         set(newCookie)
       })
       .on('update-game', newGame => {
+        console.log(newGame)
         setGame(newGame)
         if(game && (newGame.active !== game.active)) useRedirect('game')
       })
@@ -46,11 +47,14 @@ export default () => {
         setActivePlayer(value)
       })
   }, [game, activePlayer])
+
   return (
     <GameProvider
       value={game}
     >
-      <Header />
+      <Header 
+        removeGame={() => setGame(null)}
+      />
       <Router 
         history={history}
       >
@@ -82,6 +86,7 @@ export default () => {
               render={() => 
                 <WaitingRoom 
                   activePlayer={activePlayer}
+                  removeGame={() => setGame(null)}
                 />
               }
             />

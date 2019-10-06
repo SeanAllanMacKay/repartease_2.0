@@ -1,5 +1,4 @@
-import React, { useContext } from 'react';
-import GameContext from '../../context/GameContext'
+import React from 'react';
 
 import { socket } from '../../reducers/sockets'
 import { remove } from '../../hooks/useCookie'
@@ -8,7 +7,6 @@ import useRedirect from '../../hooks/useRedirect';
 import { Button } from '../Button'
 
 export default (props) => {
-    let game = useContext(GameContext)
     return (
         <Button 
             content="Leave Game"
@@ -16,8 +14,8 @@ export default (props) => {
             onClick={() => {
                 remove()
                 socket.disconnect()
-                game = null
                 useRedirect('/')
+                props.onClick()
             }}
         />
     );
