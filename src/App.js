@@ -39,7 +39,6 @@ export default () => {
         set(newCookie)
       })
       .on('update-game', newGame => {
-        console.log(newGame)
         setGame(newGame)
         if(game && (newGame.active !== game.active)) useRedirect('game')
       })

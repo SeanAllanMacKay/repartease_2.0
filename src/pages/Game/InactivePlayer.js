@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-import { Input } from 'antd'
+import { Input, Progress } from 'antd'
 import { Button } from '../../components/Button'
 
 const styles = {
@@ -33,6 +33,12 @@ const styles = {
 export default (props) => {
     const [response, setResponse] = useState('')
     const [submitted, setSubmitted] = useState(false)
+    const [progress, setProgress] = useState({ percent: '0%', color: '#732f63' })
+
+    useEffect(() => {
+        setProgress({ percent: '-100%', color: '#be0000' })
+    }, [props, response, submitted])
+
     return (
         <>
             {
@@ -65,6 +71,19 @@ export default (props) => {
                                 } 
                             }}
                         />
+                        <div style={{ height: '30px', width: '100%', position: 'relative', overflow: 'hidden', borderRadius: '15px', backgroundColor: 'lightgrey'}}>
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    left: progress.percent,
+                                    width: '100%',
+                                    height: '100%', 
+                                    backgroundColor: progress.color,
+                                    transition: 'left 90s linear, background-color 30s linear 60s',
+                                    borderRadius: '15px'
+                                }}
+                            />
+                        </div>
                     </div>
             }
         </>

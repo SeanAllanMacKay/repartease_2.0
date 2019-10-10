@@ -256,17 +256,16 @@ game
                 doc.used.push(newPrompt._id)
                 if(doc.used.length >= prompts.length) doc.used = []
                 doc.prompt = newPrompt.prompt
+
+                doc.save()
+
+                io.of('game').to(gameCode).emit('update-game', doc)
+
+                io.of('game').to(gameCode).emit('set-active-player', false)
+
+                socket.broadcast.to(doc.players[doc.turn].socket).emit('set-active-player', true);
               }
             })
-
-            doc.save()
-
-            io.of('game').to(gameCode).emit('update-game', doc)
-
-            io.of('game').to(gameCode).emit('set-active-player', false)
-
-            socket.broadcast.to(doc.players[doc.turn].socket).emit('set-active-player', true);
-
           }catch (error){
             console.log(error)
           }
@@ -329,7 +328,7 @@ game
     })
 
     .on('disconnect', () => {
-      Game.findOne({ sockets: socket.id }, (error, doc) => {
+      Game.findOne({ sockets: socket.id }, async (error, doc) => {
         if(error){
           console.log(error)
         }
@@ -343,9 +342,48 @@ game
             })[0]
 
             doc.players.splice(doc.players.indexOf(player), 1)
-            doc.save()
 
-            io.of('game').to(doc.gameCode).emit('update-game', doc)
+            console.log(doc.players.indexOf(player))
+
+            if(doc.turn === doc.players.indexOf(player)) {
+              doc.turn = doc.players.length - 1 === doc.turn ? doc.players[0].playerId : doc.players[doc.turn + 1].playerId
+
+              doc.responses = []
+
+              await Prompts.find({ 'expansion': 'standard' }, (err, prompts) => {
+                if (err) {
+                  console.log(err)
+                }
+                else{
+                  doc.used.map(used => {
+                    let find = prompts.filter(prompt => {
+                      return prompt._id === used
+                    })[0]
+                    prompts.splice(prompts.indexOf(find), 1)
+                  })
+    
+                  const newPrompt = prompts[Math.floor(Math.random() * prompts.length)]
+  
+                  doc.used.push(newPrompt._id)
+                  if(doc.used.length >= prompts.length) doc.used = []
+                  doc.prompt = newPrompt.prompt
+  
+                  doc.save()
+  
+                  io.of('game').to(doc.gameCode).emit('update-game', doc)
+  
+                  io.of('game').to(doc.gameCode).emit('set-active-player', false)
+  
+                  socket.broadcast.to(doc.players[doc.turn].socket).emit('set-active-player', true);
+                }
+              })
+            } else {
+              doc.save()
+
+              io.of('game').to(doc.gameCode).emit('update-game', doc)
+            }
+
+            
           }catch (error){
             console.log(error)
           }
