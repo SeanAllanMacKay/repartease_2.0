@@ -56,8 +56,10 @@ export default (props) => {
                 style={styles.button}
                 type="primary"
                 onClick={() => {
-                    emit(events.startGame, { name })
-                    useRedirect('waiting-room')
+                    if(name){
+                        emit(events.startGame, { name })
+                        useRedirect('waiting-room')
+                    }
                 }}
             />
         </div>

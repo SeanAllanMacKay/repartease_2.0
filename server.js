@@ -21,8 +21,6 @@ const {
   PORT = 8080,
 } = process.env
 
-console.log(`mongodb://${db_user}:${db_password}@${db_url}/${db_schema}`)
-
 mongoose.connect(`mongodb://${db_user}:${db_password}@${db_url}/${db_schema}`)
 
 const db = mongoose.connection
@@ -235,7 +233,12 @@ game
 
             chosenPlayer.points += 1
 
-            doc.turn = doc.players.length - 1 === doc.turn ? doc.players[0].playerId : doc.players[doc.turn + 1].playerId
+            const playerIds = doc.players.map(player => player.playerId).sort((a, b) => a > b ? 1 : a < b ? -1 : 0)
+
+            doc.turn = doc.turn === Math.max(...playerIds) ? 
+              playerIds[0] 
+              : 
+              playerIds.filter(playerId => playerId > doc.turn)[0]
 
             doc.responses = []
 
@@ -263,61 +266,9 @@ game
 
                 io.of('game').to(gameCode).emit('set-active-player', false)
 
-                socket.broadcast.to(doc.players[doc.turn].socket).emit('set-active-player', true);
-              }
-            })
-          }catch (error){
-            console.log(error)
-          }
-        }
-      })
-    })
+                const newPlayer = doc.players.filter(player => player.playerId === doc.turn)[0]
 
-    .on('change-turn', ({ gameCode }) => {
-      Game.findOne({ 'gameCode': gameCode }, (error, doc) => {
-        if(error){
-          console.log(error)
-        }
-        else{
-          try{
-            doc.turn = doc.players[doc.turn + 1].playerId
-
-            doc.save()
-
-            io.of('game').to(gameCode).emit('update-game', doc)
-          }catch (error){
-            console.log(error)
-          }
-        }
-      })
-    })
-
-    .on('new-prompt', ({ gameCode }) => {
-      Game.findOne({ 'gameCode': gameCode }, (error, doc) => {
-        if(error){
-          console.log(error)
-        }
-        else{
-          try{
-            Prompts.find({ 'expansion': 'standard' }, (err, prompts) => {
-              if (err) {
-                console.log(err)
-              }
-              else{
-                doc.used.map(used => {
-                  let find = prompts.filter(prompt => {
-                    return prompt._id === used
-                  })[0]
-                  prompts.splice(prompts.indexOf(find), 1)
-                })
-  
-                const newPrompt = prompts[Math.floor(Math.random() * prompts.length)]
-                doc.used.push(newPrompt._id)
-                if(doc.used.length >= prompts.length) doc.used = []
-                doc.prompt = newPrompt
-                doc.save()
-  
-                io.of('game').to(gameCode).emit('update-game', doc)
+                socket.broadcast.to(newPlayer.socket).emit('set-active-player', true);
               }
             })
           }catch (error){
@@ -341,12 +292,17 @@ game
               return player.socket === socket.id
             })[0]
 
-            doc.players.splice(doc.players.indexOf(player), 1)
+            if(doc.turn === player.playerId) {
 
-            console.log(doc.players.indexOf(player))
+              doc.players.splice(doc.players.indexOf(player), 1)
 
-            if(doc.turn === doc.players.indexOf(player)) {
-              doc.turn = doc.players.length - 1 === doc.turn ? doc.players[0].playerId : doc.players[doc.turn + 1].playerId
+              const playerIds = doc.players.map(player => player.playerId).sort((a, b) => a > b ? 1 : a < b ? -1 : 0)
+
+              doc.turn = doc.turn === Math.max(...playerIds) ? 
+                playerIds[0] 
+                : 
+                playerIds.filter(playerId => playerId > doc.turn)[0]
+
 
               doc.responses = []
 
@@ -373,8 +329,10 @@ game
                   io.of('game').to(doc.gameCode).emit('update-game', doc)
   
                   io.of('game').to(doc.gameCode).emit('set-active-player', false)
-  
-                  socket.broadcast.to(doc.players[doc.turn].socket).emit('set-active-player', true);
+
+                  const newPlayer = doc.players.filter(player => player.playerId === doc.turn)[0]
+
+                  socket.broadcast.to(newPlayer.socket).emit('set-active-player', true);
                 }
               })
             } else {

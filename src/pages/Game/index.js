@@ -19,7 +19,6 @@ export default (props) => {
     const game = useContext(GameContext)
     return (
         <div style={styles.mainContainer}>
-            
             {props.activePlayer ? 
                 <ActivePlayer 
                     prompt={game && game.prompt} 

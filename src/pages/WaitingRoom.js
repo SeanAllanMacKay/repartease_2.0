@@ -1,10 +1,12 @@
-import React, { useContext } from 'react';
+import React, { useContext, createRef } from 'react';
 import GameContext from '../context/GameContext'
 
-import { emit, events } from '../reducers/sockets'
+import { emit } from '../reducers/sockets'
 
 import { Button } from '../components/Button'
 import LeaveGame from '../components/LeaveGame'
+
+import { Input, Popover } from 'antd'
 
 const styles = {
     mainContainer: {
@@ -49,6 +51,8 @@ const styles = {
 
 export default (props) => {
     const game = useContext(GameContext)
+
+    const gameCodeRef = createRef()
     return (
         <>
             {game ? 
@@ -60,11 +64,44 @@ export default (props) => {
                     >
                         Waiting Room
                     </h2>
-                    <h3
-                        style={styles.gameCode}
-                    >
-                        {game && game.gameCode}
-                    </h3>
+                    {
+                        game &&
+                        <Popover
+                            content={
+                                <p
+                                    style={{
+                                        fontWeight: 'bold',
+                                        fontSize: '1.25em',
+                                        margin: 0
+                                    }}
+                                >
+                                    Copied
+                                </p>
+                            }
+                            trigger="click"
+                            placement="bottom"
+                        >
+                            <Input
+                                style={{
+                                    fontSize: '2em',
+                                    fontWeight: 'bold',
+                                    color: 'grey',
+                                    border: 'none',
+                                    outline: 0,
+                                    textAlign: 'center',
+                                    margin: '30px 0',
+                                    cursor: 'pointer'
+                                }}
+                                onClick={() => {
+                                    gameCodeRef.current.select()
+                                    document.execCommand('copy');
+                                    gameCodeRef.current.blur()
+                                }}
+                                ref={gameCodeRef}
+                                value={`${game.gameCode}`}
+                            />
+                        </Popover>
+                    }
                     <div
                         style={styles.playersContainer}
                     >

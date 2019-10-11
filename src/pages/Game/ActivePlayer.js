@@ -19,6 +19,7 @@ const styles = {
     },
     title: {
         fontSize: '2em',
+        textAlign: 'center'
     },
     responses: {
         marginBottom: '30px',
