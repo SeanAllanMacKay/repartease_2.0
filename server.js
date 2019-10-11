@@ -330,9 +330,11 @@ game
   
                   io.of('game').to(doc.gameCode).emit('set-active-player', false)
 
-                  const newPlayer = doc.players.filter(player => player.playerId === doc.turn)[0]
+                  if(doc.players.length > 0){
+                    const newPlayer = doc.players.filter(player => player.playerId === doc.turn)[0]
 
-                  socket.broadcast.to(newPlayer.socket).emit('set-active-player', true);
+                    socket.broadcast.to(newPlayer.socket).emit('set-active-player', true);
+                  }
                 }
               })
             } else {
